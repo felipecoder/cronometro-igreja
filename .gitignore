@@ -1,0 +1,32 @@
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+
+# Vite cache
+.vite/
+
+# Electron Builder cache
+electron-builder-cache/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+
+# temporary files
+*.tmp
+*.temp
