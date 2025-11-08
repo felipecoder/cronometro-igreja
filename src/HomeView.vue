@@ -107,7 +107,6 @@ watch(
 watch(
     () => themeStore.theme,
     () => {
-		console.log("atualizou")
         window.electronAPI.sendTheme({
             theme: themeStore.theme
         });

@@ -88,7 +88,6 @@ ipcMain.on("timer-update", (_, data) => {
 });
 
 ipcMain.on("theme-update", (event, data) => {
-    console.log("passou aqui");
     if (projectorWindow) {
         projectorWindow.webContents.send("theme-update", data);
     }
