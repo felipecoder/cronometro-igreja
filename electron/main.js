@@ -38,6 +38,9 @@ function createProjectorWindow() {
     }
 
     projectorWindow.on("closed", () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("projector-closed");
+        }
         projectorWindow = null;
     });
 }

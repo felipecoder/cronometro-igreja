@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
     openProjector: () => ipcRenderer.send("open-projector"),
     closeProjector: () => ipcRenderer.send("close-projector"),
+    onProjectorClosed: (callback) => ipcRenderer.on("projector-closed", () => callback()),
 
     onEsc: (callback) => {
         window.addEventListener("keydown", (e) => {
