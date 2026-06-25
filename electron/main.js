@@ -7,15 +7,60 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let projectorWindow = null;
 let mainWindow;
 
-function createProjectorWindow() {
+function getProjectorDisplay() {
     const displays = screen.getAllDisplays();
+    const primaryDisplay = screen.getPrimaryDisplay();
 
-    const externalDisplay =
-        displays.length > 1 ? displays[1].bounds : displays[0].bounds;
+    const explicitExternalDisplay = displays.find(
+        (display) =>
+            display.id !== primaryDisplay.id && display.internal === false
+    );
+
+    if (explicitExternalDisplay) {
+        return explicitExternalDisplay;
+    }
+
+    const secondaryDisplay = displays.find(
+        (display) => display.id !== primaryDisplay.id
+    );
+
+    return secondaryDisplay || primaryDisplay;
+}
+
+function notifyMainWindow(channel, payload) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(channel, payload);
+    }
+}
+
+function syncProjectorWindowToDisplay() {
+    if (!projectorWindow || projectorWindow.isDestroyed()) {
+        return;
+    }
+
+    const projectorDisplay = getProjectorDisplay();
+    const { x, y, width, height } = projectorDisplay.bounds;
+
+    projectorWindow.setBounds({ x, y, width, height });
+    projectorWindow.setFullScreen(false);
+    projectorWindow.setFullScreen(true);
+    projectorWindow.focus();
+}
+
+function createProjectorWindow() {
+    if (projectorWindow && !projectorWindow.isDestroyed()) {
+        syncProjectorWindowToDisplay();
+        return projectorWindow;
+    }
+
+    const projectorDisplay = getProjectorDisplay();
+    const { x, y, width, height } = projectorDisplay.bounds;
 
     projectorWindow = new BrowserWindow({
-        x: externalDisplay.x,
-        y: externalDisplay.y,
+        x,
+        y,
+        width,
+        height,
         fullscreen: true,
         frame: false,
         alwaysOnTop: true,
@@ -37,12 +82,34 @@ function createProjectorWindow() {
         projectorWindow.loadURL(prodIndex);
     }
 
+    projectorWindow.once("ready-to-show", () => {
+        syncProjectorWindowToDisplay();
+    });
+
+    notifyMainWindow("projector-opened");
+
     projectorWindow.on("closed", () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send("projector-closed");
-        }
+        notifyMainWindow("projector-closed");
         projectorWindow = null;
     });
+
+    return projectorWindow;
+}
+
+function handleDisplayChange() {
+    const hasExternalDisplay =
+        screen.getAllDisplays().some(
+            (display) => display.id !== screen.getPrimaryDisplay().id
+        );
+
+    if (hasExternalDisplay) {
+        createProjectorWindow();
+        return;
+    }
+
+    if (projectorWindow && !projectorWindow.isDestroyed()) {
+        projectorWindow.close();
+    }
 }
 
 async function createWindow() {
@@ -74,6 +141,8 @@ async function createWindow() {
     mainWindow.on("closed", () => {
         mainWindow = null;
     });
+
+    handleDisplayChange();
 }
 
 ipcMain.on("open-projector", () => {
@@ -96,7 +165,17 @@ ipcMain.on("theme-update", (event, data) => {
     }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+    createWindow();
+
+    screen.on("display-added", handleDisplayChange);
+    screen.on("display-removed", handleDisplayChange);
+    screen.on("display-metrics-changed", () => {
+        if (projectorWindow && !projectorWindow.isDestroyed()) {
+            syncProjectorWindowToDisplay();
+        }
+    });
+});
 
 app.on("window-all-closed", () => {
     if (projectorWindow) projectorWindow.close();

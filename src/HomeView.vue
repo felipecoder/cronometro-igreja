@@ -261,7 +261,6 @@ watch(
 watch(
     () => themeStore.theme,
     () => {
-		console.log("atualizou")
         window.electronAPI.sendTheme({
             theme: themeStore.theme
         });
@@ -287,9 +286,17 @@ const closeProjector = () => {
 };
 
 onMounted(() => {
+    if (!isElectron) {
+        return;
+    }
+
     window.electronAPI.onEsc(() => {
         window.electronAPI.closeProjector();
         projectorOpen.value = false;
+    });
+
+    window.electronAPI.onProjectorOpened(() => {
+        projectorOpen.value = true;
     });
 
     window.electronAPI.onProjectorClosed(() => {
